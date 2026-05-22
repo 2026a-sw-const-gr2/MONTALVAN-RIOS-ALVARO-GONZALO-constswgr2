@@ -4,7 +4,7 @@ import { CreateEventDto } from './dto/create-event.dto';
 
 @Controller('events')
 export class EventsController {
-  constructor(private readonly eventsService: EventsService) {}
+  constructor(private readonly eventsService: EventsService) { }
 
   @Post()
   registerEvent(@Body() dto: CreateEventDto) {
@@ -14,6 +14,11 @@ export class EventsController {
   @Get()
   findAll() {
     return this.eventsService.findAll();
+  }
+
+  @Get('recent')
+  getRecent() {
+    return this.eventsService.getRecentEvents(10);
   }
 
   @Get('source/:source')

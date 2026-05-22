@@ -12,7 +12,7 @@ export class InstrumentsService {
     @InjectRepository(InstrumentEntity)
     private readonly instrumentRepository: Repository<InstrumentEntity>,
     private readonly eventsService: EventsService,
-  ) {}
+  ) { }
 
   async create(createInstrumentDto: CreateInstrumentDto): Promise<InstrumentEntity> {
     // Validación: cantidad no debe ser negativa
@@ -91,11 +91,12 @@ export class InstrumentsService {
     }
 
     // Actualizar solo los campos proporcionados
+    const before = { ...existingInstrument };
+
     Object.assign(existingInstrument, updateInstrumentDto);
     const updatedInstrument = await this.instrumentRepository.save(existingInstrument);
 
-    // Enviar evento de actualización
-    await this.eventsService.onUpdateInstrument(existingInstrument, updatedInstrument);
+    await this.eventsService.onUpdateInstrument(before, updatedInstrument);
 
     return updatedInstrument;
   }

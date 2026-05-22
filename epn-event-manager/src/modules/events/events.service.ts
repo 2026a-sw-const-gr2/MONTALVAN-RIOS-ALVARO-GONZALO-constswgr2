@@ -20,78 +20,82 @@ export class EventsService {
     private readonly queryRepo: Repository<QueryEventEntity>,
   ) {}
 
-  async registerEvent(dto: CreateEventDto): Promise<{ ok: boolean }> {
-    const action = (dto.action ?? '').toUpperCase();
-    const payloadStr = JSON.stringify(dto.payload ?? {});
-    // Fecha en formato UTC ISO 8601 — requerimiento institucional EPN
-    const isoDate = new Date().toISOString();
+  async registerEvent(dto: CreateEventDto): Promise<{ ok: boolean; error?: string }> {
+    try {
+      const action = (dto.action ?? '').toUpperCase();
+      const payloadStr = JSON.stringify(dto.payload ?? {});
+      const isoDate = new Date().toISOString();
 
-    if (action === 'CREATE') {
-      const ev = this.createRepo.create({
-        source: dto.source,
-        entity: dto.entity,
-        action: dto.action,
-        title: dto.title,
-        description: dto.description,
-        payload: payloadStr,
-        recorded_at: isoDate,
-      });
-      await this.createRepo.save(ev);
-      return { ok: true };
+      if (action === 'CREATE') {
+        const ev = this.createRepo.create({
+          source: dto.source,
+          entity: dto.entity,
+          action: dto.action,
+          title: dto.title,
+          description: dto.description,
+          payload: payloadStr,
+          recorded_at: isoDate,
+        });
+        await this.createRepo.save(ev);
+        return { ok: true };
+      }
+
+      if (action === 'UPDATE') {
+        const ev = this.updateRepo.create({
+          source: dto.source,
+          entity: dto.entity,
+          action: dto.action,
+          title: dto.title,
+          description: dto.description,
+          payload: payloadStr,
+          timestamp: isoDate,
+        });
+        await this.updateRepo.save(ev);
+        return { ok: true };
+      }
+
+      if (action === 'DELETE') {
+        const ev = this.deleteRepo.create({
+          source: dto.source,
+          entity: dto.entity,
+          action: dto.action,
+          title: dto.title,
+          payload: payloadStr,
+          createdAt: isoDate,
+        });
+        await this.deleteRepo.save(ev);
+        return { ok: true };
+      }
+
+      if (action === 'QUERY') {
+        const ev = this.queryRepo.create({
+          source: dto.source,
+          entity: dto.entity,
+          action: dto.action,
+          title: dto.title,
+          description: dto.description,
+          payload: payloadStr,
+          event_date: isoDate,
+        });
+        await this.queryRepo.save(ev);
+        return { ok: true };
+      }
+
+      return { ok: false };
+
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : 'Error desconocido';
+      console.error('❌ Error al registrar evento:', message);
+      return { ok: false, error: 'Error interno al persistir el evento' };
     }
-
-    if (action === 'UPDATE') {
-      const ev = this.updateRepo.create({
-        source: dto.source,
-        entity: dto.entity,
-        action: dto.action,
-        title: dto.title,
-        description: dto.description,
-        payload: payloadStr,
-        timestamp: isoDate,
-      });
-      await this.updateRepo.save(ev);
-      return { ok: true };
-    }
-
-    if (action === 'DELETE') {
-    const ev = this.deleteRepo.create({
-        source: dto.source,
-        entity: dto.entity,
-        action: dto.action,
-        title: dto.title,
-        payload: payloadStr,
-        createdAt: isoDate,
-      });
-      await this.deleteRepo.save(ev);
-      return { ok: true };
-    }
-
-    if (action === 'QUERY') {
-      const ev = this.queryRepo.create({
-        source: dto.source,
-        entity: dto.entity,
-        action: dto.action,
-        title: dto.title,
-        description: dto.description,
-        payload: payloadStr,
-        event_date: isoDate,
-      });
-      await this.queryRepo.save(ev);
-      return { ok: true };
-    }
-
-    return { ok: false };
   }
 
   async findAll(): Promise<object[]> {
-    // Incidencia perfectiva: agrega 4 tablas en memoria sin orden garantizado
     const creates = await this.createRepo.find();
     const updates = await this.updateRepo.find();
     const deletes = await this.deleteRepo.find();
     const queries = await this.queryRepo.find();
 
-    // Ordena lexicograficamente por strings de fecha heterogeneos (incorrecto)
     const merged = [
       ...creates.map((e) => ({ ...e, _table: 'create_events' })),
       ...updates.map((e) => ({ ...e, _table: 'update_events' })),
@@ -102,10 +106,8 @@ export class EventsService {
     merged.sort((a, b) => {
       const ra = a as unknown as Record<string, string>;
       const rb = b as unknown as Record<string, string>;
-      const ta =
-        ra.recorded_at ?? ra.timestamp ?? ra.createdAt ?? ra.event_date ?? '';
-      const tb =
-        rb.recorded_at ?? rb.timestamp ?? rb.createdAt ?? rb.event_date ?? '';
+      const ta = ra.recorded_at ?? ra.timestamp ?? ra.createdAt ?? ra.event_date ?? '';
+      const tb = rb.recorded_at ?? rb.timestamp ?? rb.createdAt ?? rb.event_date ?? '';
       return ta.localeCompare(tb);
     });
 
@@ -121,7 +123,6 @@ export class EventsService {
   }
 
   async findByEntity(entity: string): Promise<object[]> {
-    // Incidencia preventiva: parametro entity usado directamente sin sanitizar
     const creates = await this.createRepo.findBy({ entity });
     const updates = await this.updateRepo.findBy({ entity });
     const deletes = await this.deleteRepo.findBy({ entity });
@@ -133,12 +134,35 @@ export class EventsService {
     const createCount = await this.createRepo.count();
     const updateCount = await this.updateRepo.count();
     const deleteCount = await this.deleteRepo.count();
-    // Incidencia perfectiva: query_events no se incluye en el total
+    const queryCount = await this.queryRepo.count();
+    const total = createCount + updateCount + deleteCount + queryCount;
+
+    const allCreates = await this.createRepo.find();
+    const allUpdates = await this.updateRepo.find();
+    const allDeletes = await this.deleteRepo.find();
+    const allQueries = await this.queryRepo.find();
+
+    const bySource: Record<string, number> = {};
+    [...allCreates, ...allUpdates, ...allDeletes, ...allQueries].forEach((ev: any) => {
+      const src = ev.source || 'unknown';
+      bySource[src] = (bySource[src] || 0) + 1;
+    });
+
     return {
-      create: createCount,
-      update: updateCount,
-      delete: deleteCount,
-      total: createCount + updateCount + deleteCount,
+      byAction: {
+        create: createCount,
+        update: updateCount,
+        delete: deleteCount,
+        query: queryCount,
+      },
+      total,
+      bySource,
+      generatedAt: new Date().toISOString(),
     };
+  }
+
+  async getRecentEvents(limit: number): Promise<object[]> {
+    const all = await this.findAll();
+    return all.slice(0, limit > 0 ? limit : 10);
   }
 }

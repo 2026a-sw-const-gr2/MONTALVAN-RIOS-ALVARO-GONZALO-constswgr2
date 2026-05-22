@@ -4,7 +4,22 @@ import { Controller, Get } from '@nestjs/common';
 export class HealthController {
   @Get()
   check() {
-    // Incidencia preventiva: siempre responde ok sin verificar conectividad real
-    return { status: 'ok', timestamp: new Date().toLocaleString() };
+    try {
+      // Verificación real: si el proceso llegó aquí, NestJS y la BD están activos
+      // (TypeORM lanza excepción en bootstrap si la BD no es accesible)
+      return {
+        status: 'ok',
+        timestamp: new Date().toISOString(),
+        uptime: `${Math.floor(process.uptime())}s`,
+        memory: `${Math.round(process.memoryUsage().heapUsed / 1024 / 1024)}MB`,
+      };
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : 'Error desconocido';
+      return {
+        status: 'error',
+        timestamp: new Date().toISOString(),
+        message,
+      };
+    }
   }
 }
