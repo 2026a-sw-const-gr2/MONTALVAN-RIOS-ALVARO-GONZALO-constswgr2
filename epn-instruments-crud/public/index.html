@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>🎵 Inventario de Instrumentos Musicales - EPN</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Segoe UI', sans-serif; background: #1a1a2e; color: #eee; min-height: 100vh; }
+    header { background: #16213e; padding: 20px 40px; display: flex; align-items: center; gap: 15px; border-bottom: 2px solid #0f3460; }
+    header h1 { font-size: 1.5rem; color: #e94560; }
+    header p { color: #aaa; font-size: 0.85rem; margin-top: 4px; }
+    .badge { background: #0f3460; color: #4fc3f7; padding: 3px 10px; border-radius: 20px; font-size: 0.75rem; margin-left: auto; }
+    .container { max-width: 1100px; margin: 30px auto; padding: 0 20px; }
+    .form-card { background: #16213e; border-radius: 12px; padding: 25px; margin-bottom: 30px; border: 1px solid #0f3460; }
+    .form-card h2 { color: #4fc3f7; margin-bottom: 20px; font-size: 1.1rem; }
+    .form-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 12px; }
+    .form-group { display: flex; flex-direction: column; gap: 5px; }
+    .form-group label { font-size: 0.8rem; color: #aaa; text-transform: uppercase; letter-spacing: 0.5px; }
+    .form-group input, .form-group select { background: #0f3460; border: 1px solid #1a4a7a; color: #eee; padding: 10px 12px; border-radius: 8px; font-size: 0.9rem; outline: none; transition: border 0.2s; }
+    .form-group input:focus, .form-group select:focus { border-color: #4fc3f7; }
+    .form-actions { margin-top: 15px; display: flex; gap: 10px; flex-wrap: wrap; }
+    button { padding: 10px 20px; border: none; border-radius: 8px; cursor: pointer; font-size: 0.9rem; font-weight: 600; transition: opacity 0.2s, transform 0.1s; }
+    button:hover { opacity: 0.85; transform: translateY(-1px); }
+    button:active { transform: translateY(0); }
+    .btn-create { background: #4caf50; color: white; }
+    .btn-update { background: #ff9800; color: white; }
+    .btn-delete { background: #e94560; color: white; }
+    .btn-clear { background: #555; color: white; }
+    .btn-refresh { background: #4fc3f7; color: #000; }
+    table { width: 100%; border-collapse: collapse; }
+    thead tr { background: #0f3460; }
+    th { padding: 12px 15px; text-align: left; font-size: 0.8rem; text-transform: uppercase; color: #4fc3f7; letter-spacing: 0.5px; }
+    td { padding: 12px 15px; border-bottom: 1px solid #1e2a45; font-size: 0.88rem; }
+    tr:hover td { background: #1e2a45; }
+    .table-card { background: #16213e; border-radius: 12px; overflow: hidden; border: 1px solid #0f3460; }
+    .table-header { display: flex; align-items: center; justify-content: space-between; padding: 18px 25px; border-bottom: 1px solid #0f3460; }
+    .table-header h2 { color: #4fc3f7; font-size: 1.1rem; }
+    #record-count { color: #aaa; font-size: 0.85rem; }
+    .action-btns { display: flex; gap: 6px; }
+    .action-btns button { padding: 5px 12px; font-size: 0.8rem; }
+    .toast { position: fixed; bottom: 25px; right: 25px; background: #333; color: white; padding: 12px 20px; border-radius: 8px; font-size: 0.9rem; z-index: 999; display: none; max-width: 350px; border-left: 4px solid #4caf50; }
+    .toast.error { border-left-color: #e94560; }
+    .toast.info { border-left-color: #4fc3f7; }
+    .tipo-badge { background: #0f3460; color: #4fc3f7; padding: 2px 8px; border-radius: 12px; font-size: 0.75rem; }
+    .no-data { text-align: center; padding: 40px; color: #666; }
+    .edit-row td { background: #1a3a5c !important; }
+  </style>
+</head>
+<body>
+
+<header>
+  <div>
+    <h1>🎵 Inventario de Instrumentos Musicales</h1>
+    <p>Sistema CRUD · Integrado con EPN Event Manager</p>
+  </div>
+  <span class="badge" id="event-status">📡 Conectando con Event Manager...</span>
+</header>
+
+<div class="container">
+  <!-- Formulario -->
+  <div class="form-card">
+    <h2>➕ Agregar / Editar Instrumento</h2>
+    <input type="hidden" id="edit-id" />
+    <div class="form-grid">
+      <div class="form-group">
+        <label>Nombre *</label>
+        <input type="text" id="nombre" placeholder="Ej: Guitarra Yamaha" maxlength="100" />
+      </div>
+      <div class="form-group">
+        <label>Tipo *</label>
+        <select id="tipo">
+          <option value="">-- Seleccionar --</option>
+          <option value="Cuerda">Cuerda</option>
+          <option value="Viento">Viento</option>
+          <option value="Percusión">Percusión</option>
+          <option value="Teclado">Teclado</option>
+          <option value="Electrónico">Electrónico</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Marca</label>
+        <input type="text" id="marca" placeholder="Ej: Yamaha" maxlength="50" />
+      </div>
+      <div class="form-group">
+        <label>Modelo</label>
+        <input type="text" id="modelo" placeholder="Ej: C40" maxlength="50" />
+      </div>
+      <div class="form-group">
+        <label>Precio (USD) *</label>
+        <input type="number" id="precio" placeholder="0.00" min="0" step="0.01" />
+      </div>
+      <div class="form-group">
+        <label>Cantidad *</label>
+        <input type="number" id="cantidad" placeholder="0" min="0" />
+      </div>
+      <div class="form-group">
+        <label>Condición</label>
+        <select id="condicion">
+          <option value="">-- Seleccionar --</option>
+          <option value="Nuevo">Nuevo</option>
+          <option value="Usado">Usado</option>
+          <option value="Reparado">Reparado</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Ubicación</label>
+        <input type="text" id="ubicacion" placeholder="Ej: Bodega A" maxlength="50" />
+      </div>
+      <div class="form-group" style="grid-column: 1 / -1;">
+        <label>Descripción</label>
+        <input type="text" id="descripcion" placeholder="Detalles adicionales..." maxlength="200" />
+      </div>
+    </div>
+    <div class="form-actions">
+      <button class="btn-create" onclick="createOrUpdate()">💾 Guardar</button>
+      <button class="btn-clear" onclick="clearForm()">🧹 Limpiar</button>
+    </div>
+  </div>
+
+  <!-- Tabla -->
+  <div class="table-card">
+    <div class="table-header">
+      <h2>📋 Inventario</h2>
+      <div style="display:flex;gap:10px;align-items:center;">
+        <span id="record-count">Cargando...</span>
+        <button class="btn-refresh" onclick="loadInstruments()">🔄 Actualizar</button>
+      </div>
+    </div>
+    <table>
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>Nombre</th>
+          <th>Tipo</th>
+          <th>Marca/Modelo</th>
+          <th>Precio</th>
+          <th>Cantidad</th>
+          <th>Condición</th>
+          <th>Acciones</th>
+        </tr>
+      </thead>
+      <tbody id="instruments-tbody">
+        <tr><td colspan="8" class="no-data">Cargando instrumentos...</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+  const API = 'http://localhost:3001/instruments';
+
+  function showToast(msg, type = 'success') {
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.className = `toast ${type === 'error' ? 'error' : type === 'info' ? 'info' : ''}`;
+    t.style.display = 'block';
+    setTimeout(() => t.style.display = 'none', 3500);
+  }
+
+  async function loadInstruments() {
+    try {
+      const res = await fetch(API);
+      if (!res.ok) throw new Error('Error al cargar');
+      const data = await res.json();
+      renderTable(data);
+      document.getElementById('record-count').textContent = `${data.length} registro(s)`;
+      document.getElementById('event-status').textContent = '✅ Event Manager conectado';
+      document.getElementById('event-status').style.background = '#1a4a1a';
+      document.getElementById('event-status').style.color = '#4caf50';
+    } catch (e) {
+      document.getElementById('instruments-tbody').innerHTML =
+        '<tr><td colspan="8" class="no-data">❌ No se pudo conectar al servidor. ¿Está corriendo en puerto 3001?</td></tr>';
+      document.getElementById('record-count').textContent = 'Sin conexión';
+    }
+  }
+
+  function renderTable(instruments) {
+    const tbody = document.getElementById('instruments-tbody');
+    if (!instruments.length) {
+      tbody.innerHTML = '<tr><td colspan="8" class="no-data">No hay instrumentos registrados. ¡Agrega el primero!</td></tr>';
+      return;
+    }
+    tbody.innerHTML = instruments.map(inst => `
+      <tr id="row-${inst.id}">
+        <td><strong>#${inst.id}</strong></td>
+        <td>${inst.nombre}</td>
+        <td><span class="tipo-badge">${inst.tipo}</span></td>
+        <td>${inst.marca || '-'} ${inst.modelo ? '/ ' + inst.modelo : ''}</td>
+        <td>$${Number(inst.precio).toFixed(2)}</td>
+        <td>${inst.cantidad}</td>
+        <td>${inst.condicion || '-'}</td>
+        <td>
+          <div class="action-btns">
+            <button class="btn-update" onclick="editInstrument(${inst.id})">✏️ Editar</button>
+            <button class="btn-delete" onclick="deleteInstrument(${inst.id}, '${inst.nombre}')">🗑️ Eliminar</button>
+          </div>
+        </td>
+      </tr>
+    `).join('');
+  }
+
+  async function createOrUpdate() {
+    const id = document.getElementById('edit-id').value;
+    const nombre = document.getElementById('nombre').value.trim();
+    const tipo = document.getElementById('tipo').value;
+    const precio = parseFloat(document.getElementById('precio').value);
+    const cantidad = parseInt(document.getElementById('cantidad').value);
+
+    if (!nombre) { showToast('⚠️ El nombre es obligatorio', 'error'); return; }
+    if (!tipo) { showToast('⚠️ El tipo es obligatorio', 'error'); return; }
+    if (isNaN(precio) || precio < 0) { showToast('⚠️ Precio inválido', 'error'); return; }
+    if (isNaN(cantidad) || cantidad < 0) { showToast('⚠️ Cantidad inválida', 'error'); return; }
+
+    const body = {
+      nombre,
+      tipo,
+      marca: document.getElementById('marca').value.trim() || undefined,
+      modelo: document.getElementById('modelo').value.trim() || undefined,
+      precio,
+      cantidad,
+      descripcion: document.getElementById('descripcion').value.trim() || undefined,
+      condicion: document.getElementById('condicion').value || undefined,
+      ubicacion: document.getElementById('ubicacion').value.trim() || undefined,
+    };
+
+    // Eliminar claves undefined
+    Object.keys(body).forEach(k => body[k] === undefined && delete body[k]);
+
+    try {
+      let res;
+      if (id) {
+        res = await fetch(`${API}/${id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body),
+        });
+        showToast('✅ Instrumento actualizado — evento UPDATE enviado al Hub', 'info');
+      } else {
+        res = await fetch(API, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body),
+        });
+        showToast('✅ Instrumento creado — evento CREATE enviado al Hub');
+      }
+
+      if (!res.ok) {
+        const err = await res.json();
+        showToast('❌ ' + (err.message || 'Error del servidor'), 'error');
+        return;
+      }
+
+      clearForm();
+      loadInstruments();
+    } catch (e) {
+      showToast('❌ Error de conexión con el servidor', 'error');
+    }
+  }
+
+  async function editInstrument(id) {
+    try {
+      const res = await fetch(`${API}/${id}`);
+      const inst = await res.json();
+      document.getElementById('edit-id').value = inst.id;
+      document.getElementById('nombre').value = inst.nombre;
+      document.getElementById('tipo').value = inst.tipo;
+      document.getElementById('marca').value = inst.marca || '';
+      document.getElementById('modelo').value = inst.modelo || '';
+      document.getElementById('precio').value = inst.precio;
+      document.getElementById('cantidad').value = inst.cantidad;
+      document.getElementById('descripcion').value = inst.descripcion || '';
+      document.getElementById('condicion').value = inst.condicion || '';
+      document.getElementById('ubicacion').value = inst.ubicacion || '';
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      showToast(`✏️ Editando: ${inst.nombre}`, 'info');
+    } catch (e) {
+      showToast('❌ No se pudo cargar el instrumento', 'error');
+    }
+  }
+
+  async function deleteInstrument(id, nombre) {
+    if (!confirm(`¿Eliminar "${nombre}"? Esta acción enviará un evento DELETE al Hub.`)) return;
+    try {
+      const res = await fetch(`${API}/${id}`, { method: 'DELETE' });
+      if (res.status === 204) {
+        showToast(`🗑️ "${nombre}" eliminado — evento DELETE enviado al Hub`);
+        loadInstruments();
+      } else {
+        showToast('❌ Error al eliminar', 'error');
+      }
+    } catch (e) {
+      showToast('❌ Error de conexión', 'error');
+    }
+  }
+
+  function clearForm() {
+    document.getElementById('edit-id').value = '';
+    ['nombre','marca','modelo','precio','cantidad','descripcion','ubicacion'].forEach(id => {
+      document.getElementById(id).value = '';
+    });
+    document.getElementById('tipo').value = '';
+    document.getElementById('condicion').value = '';
+  }
+
+  // Cargar al inicio
+  loadInstruments();
+</script>
+</body>
+</html>
