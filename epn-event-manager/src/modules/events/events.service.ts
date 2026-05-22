@@ -23,8 +23,8 @@ export class EventsService {
   async registerEvent(dto: CreateEventDto): Promise<{ ok: boolean }> {
     const action = (dto.action ?? '').toUpperCase();
     const payloadStr = JSON.stringify(dto.payload ?? {});
-    // Fecha guardada en formato local, no UTC (debilidad intencional)
-    const localDate = new Date().toLocaleString();
+    // Fecha en formato UTC ISO 8601 — requerimiento institucional EPN
+    const isoDate = new Date().toISOString();
 
     if (action === 'CREATE') {
       const ev = this.createRepo.create({
@@ -34,7 +34,7 @@ export class EventsService {
         title: dto.title,
         description: dto.description,
         payload: payloadStr,
-        recorded_at: localDate,
+        recorded_at: isoDate,
       });
       await this.createRepo.save(ev);
       return { ok: true };
@@ -48,23 +48,22 @@ export class EventsService {
         title: dto.title,
         description: dto.description,
         payload: payloadStr,
-        timestamp: localDate,
+        timestamp: isoDate,
       });
       await this.updateRepo.save(ev);
       return { ok: true };
     }
 
     if (action === 'DELETE') {
-      // BUG INTENCIONAL (correctivo): se construye el objeto pero se devuelve
-      // exito antes de persistirlo. El save nunca se ejecuta.
-      this.deleteRepo.create({
+    const ev = this.deleteRepo.create({
         source: dto.source,
         entity: dto.entity,
         action: dto.action,
         title: dto.title,
         payload: payloadStr,
-        createdAt: localDate,
+        createdAt: isoDate,
       });
+      await this.deleteRepo.save(ev);
       return { ok: true };
     }
 
@@ -76,7 +75,7 @@ export class EventsService {
         title: dto.title,
         description: dto.description,
         payload: payloadStr,
-        event_date: localDate,
+        event_date: isoDate,
       });
       await this.queryRepo.save(ev);
       return { ok: true };
