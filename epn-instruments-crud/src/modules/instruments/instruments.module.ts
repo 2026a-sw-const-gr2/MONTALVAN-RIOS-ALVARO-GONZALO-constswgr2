@@ -1,14 +1,15 @@
+// MANTENIMIENTO CORRECTIVO — Alvaro Montalvan
+
 import { Module } from '@nestjs/common';
-import { TypeOrmModule } from '@nestjs/typeorm';
-import { InstrumentEntity } from '../../database/entities/instrument.entity';
 import { InstrumentsService } from './instruments.service';
 import { InstrumentsController } from './instruments.controller';
+import { DatabaseModule } from '../../database/database.module';
 import { EventsModule } from '../events/events.module';
+import { AppLogger } from '../../logger/app-logger.service';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([InstrumentEntity]), EventsModule],
+  imports: [DatabaseModule, EventsModule],
   controllers: [InstrumentsController],
-  providers: [InstrumentsService],
-  exports: [InstrumentsService],
+  providers: [InstrumentsService, AppLogger],
 })
 export class InstrumentsModule {}
